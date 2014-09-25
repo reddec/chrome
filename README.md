@@ -8,6 +8,8 @@ Wrapper of ChromePackaged API in OOP patterns in CoffeeScript
 TcpSocket
 ======
 
+## Example
+
 ```coffeescript
 TcpSocket.create JsonProto, (sock)->
   sock.on 'message', (data)->
