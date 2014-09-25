@@ -8,6 +8,20 @@ Wrapper of ChromePackaged API in OOP patterns in CoffeeScript
 TcpSocket
 ======
 
+```coffeescript
+TcpSocket.create JsonProto, (sock)->
+  sock.on 'message', (data)->
+    console.log 'Message', data
+  sock.on 'connect', ()->
+    console.log 'Connected'
+    sock.send ['Hello world!', 1, 2, {a: 1}]
+  sock.on 'close', ()->
+    console.log 'Closed'
+  sock.on 'error', (code, err, from)->
+    console.log 'ERROR:', from, code, err
+  sock.connect '127.0.0.1', 3000
+```
+
 [Original API](https://developer.chrome.com/apps/sockets_tcp)
 
 ## [constructor]
