@@ -1,10 +1,6 @@
 Wrapper of ChromePackaged API in OOP patterns in CoffeeScript
 -------
 
-
-#### TODO: Human readable error codes
-#### TODO: Refactor
-
 * Author: RedDec <net.dev@mail.ru>
 * 25 Sep 2014
 
