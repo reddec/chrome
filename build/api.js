@@ -10,7 +10,9 @@
 
 
 (function() {
-  var EventEmitter, EventProvider, TcpSocket, ab2str, ab2str8, str2ab, tcp_reader,
+  "use strict";
+
+  var EventEmitter, EventProvider, TcpServer, TcpSocket, ab2str, ab2str8, server_reader, str2ab, tcp_reader,
     __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
     __slice = [].slice,
     __hasProp = {}.hasOwnProperty,
@@ -153,8 +155,6 @@
   /*
   # Wrapper of ChromePackaged API - TCPSocket (client)
   #
-  # TODO: Human readable error codes
-  # TODO: Refactor
   #
   # Author: RedDec <net.dev@mail.ru>
   # 25 Sep 2014
@@ -204,6 +204,8 @@
       this.connected = false;
       this.paused = true;
       this.closed = false;
+      this.tdl_id = TcpSocket.api.data.on(this.socketId, this._data);
+      this.tel_id = TcpSocket.api.error.on(this.socketId, this._error);
     }
 
     TcpSocket.prototype.pause = function(state, done) {
@@ -261,8 +263,6 @@
       var _this = this;
       return chrome.sockets.tcp.connect(this.socketId, host, port, function(code) {
         _this.connected = code >= 0;
-        _this.tdl_id = TcpSocket.api.data.on(_this.socketId, _this._data);
-        _this.tel_id = TcpSocket.api.error.on(_this.socketId, _this._error);
         if (!_this.connected) {
           return _this.emit('error', code, chrome.runtime.lastError, 'connect');
         } else {
@@ -327,5 +327,163 @@
     return TcpSocket;
 
   }).call(this, EventProvider);
+
+  server_reader = function() {
+    var accept, error,
+      _this = this;
+    accept = new EventProvider();
+    error = new EventProvider();
+    chrome.sockets.tcpServer.onAccept.addListener(function(info) {
+      return accept.emit(info.socketId, info.clientSocketId);
+    });
+    chrome.sockets.tcpServer.onAcceptError.addListener(function(info) {
+      if (info) {
+        return error.emit(info.socketId, info.resultCode);
+      }
+    });
+    return {
+      accept: accept,
+      error: error
+    };
+  };
+
+  TcpServer = (function(_super) {
+
+    __extends(TcpServer, _super);
+
+    TcpServer.api = server_reader();
+
+    function TcpServer(socketId) {
+      this.socketId = socketId;
+      this._accept = __bind(this._accept, this);
+
+      this._error = __bind(this._error, this);
+
+      this.sockets = __bind(this.sockets, this);
+
+      this.info = __bind(this.info, this);
+
+      this.close = __bind(this.close, this);
+
+      this.disconnect = __bind(this.disconnect, this);
+
+      this.listen = __bind(this.listen, this);
+
+      this.pause = __bind(this.pause, this);
+
+      TcpServer.__super__.constructor.call(this);
+    }
+
+    TcpServer.create = function(done) {
+      var _this = this;
+      return chrome.sockets.tcpServer.create(function(createInfo) {
+        if (done) {
+          return done(new TcpServer(createInfo.socketId));
+        }
+      });
+    };
+
+    TcpServer.prototype.pause = function(paused, done) {
+      var _this = this;
+      return chrome.sockets.tcpServer.setPaused(this.socketId, paused, function() {
+        if (done) {
+          return done(_this);
+        }
+      });
+    };
+
+    TcpServer.prototype.listen = function(address, port, backlog, done, unpause) {
+      var _this = this;
+      if (backlog == null) {
+        backlog = 1;
+      }
+      if (unpause == null) {
+        unpause = true;
+      }
+      return chrome.sockets.tcpServer.listen(this.socketId, address, port, backlog, function(result) {
+        if (result < 0) {
+          _this.emit('error', result, chrome.runtime.lastError, 'listen');
+          if (done) {
+            return done(_this, false);
+          }
+        } else {
+          _this._acc = TcpServer.api.accept.on(_this.socketId, _this._accept);
+          _this._ace = TcpServer.api.error.on(_this.socketId, _this._error);
+          _this.emit('listen', _this);
+          if (unpause) {
+            return _this.pause(false, function() {
+              if (done) {
+                return done(_this, true);
+              }
+            });
+          } else {
+            if (done) {
+              return done(_this, true);
+            }
+          }
+        }
+      });
+    };
+
+    TcpServer.prototype.disconnect = function(done) {
+      var _this = this;
+      return chrome.sockets.tcpServer.disconnect(this.socketId, function() {
+        if (_this._acc) {
+          TcpServer.api.accept.removeListener(_this._acc);
+        }
+        if (_this._ace) {
+          TcpServer.api.error.removeListener(_this._ace);
+        }
+        _this.emit('disconnect', _this);
+        if (done) {
+          return done(_this);
+        }
+      });
+    };
+
+    TcpServer.prototype.close = function(done) {
+      var _this = this;
+      return this.disconnect(function() {
+        return chrome.sockets.tcpServer.close(_this.socketId, function() {
+          _this.emit('close', _this);
+          if (done) {
+            return done(_this);
+          }
+        });
+      });
+    };
+
+    TcpServer.prototype.info = function(done) {
+      var _this = this;
+      if (done) {
+        return chrome.sockets.tcpServer.getInfo(this.socketId, function(info) {
+          return done(info, _this);
+        });
+      }
+    };
+
+    TcpServer.prototype.sockets = function(done) {
+      var _this = this;
+      return chrome.sockets.tcpServer.getSockets(function(socketsInfo) {
+        if (done) {
+          return done(socketsInfo, _this);
+        }
+      });
+    };
+
+    TcpServer.prototype._error = function(code) {
+      return this.emit('error', code, new Error(code), 'acceptError');
+    };
+
+    TcpServer.prototype._accept = function(client) {
+      var s;
+      s = new TcpSocket(client);
+      s.connected = true;
+      return this.emit('accept', s);
+    };
+
+    return TcpServer;
+
+  })(EventProvider);
 
 }).call(this);

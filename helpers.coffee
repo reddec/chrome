@@ -5,6 +5,7 @@
 # Modified by: RedDec <net.dev@mail.ru>
 # 25 Sep 2014
 ###
+"use strict"
 
 ab2str=(buf)-> String.fromCharCode.apply null, new Uint16Array(buf)
 

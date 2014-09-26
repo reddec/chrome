@@ -1,8 +1,6 @@
 ###
 # Wrapper of ChromePackaged API - TCPSocket (client)
 #
-# TODO: Human readable error codes
-# TODO: Refactor
 #
 # Author: RedDec <net.dev@mail.ru>
 # 25 Sep 2014
@@ -43,6 +41,8 @@ class TcpSocket extends EventProvider
     @connected = false
     @paused = true
     @closed = false
+    @tdl_id = TcpSocket.api.data.on @socketId, @_data
+    @tel_id = TcpSocket.api.error.on @socketId, @_error
 
   ##
   # Enables or disables the application from receiving messages from its peer.
@@ -97,8 +97,6 @@ class TcpSocket extends EventProvider
   connect: (host, port, done)=>
     chrome.sockets.tcp.connect @socketId, host, port, (code)=>
       @connected = code >= 0
-      @tdl_id = TcpSocket.api.data.on @socketId, @_data
-      @tel_id = TcpSocket.api.error.on @socketId, @_error
       if not @connected
         @emit 'error', code, chrome.runtime.lastError, 'connect'
       else
