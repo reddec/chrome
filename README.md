@@ -47,7 +47,7 @@ Create new TcpSocket
 
 ### [constructor]
 
-```TcpSocket(@socketId)```
+``` TcpSocket(@socketId) ```
 
 Create new instance of TcpSocket
 
@@ -61,7 +61,7 @@ Public variables:
 
 ### pause
 
-```pause(state, done)```
+``` pause(state, done) ```
 
 Enables or disables the application from receiving messages from its peer.
 Automatically sets to true when connection established.
