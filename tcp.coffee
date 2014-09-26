@@ -38,13 +38,11 @@ class TcpSocket extends EventProvider
   # * connected [boolean] - is socket connected to peer
   #
   # @param socketId [Integer] - Socket file descriptor
-  # @param mode [class] - IO converter. See: RawProto, TextProto, JsonProto
-  constructor:(@socketId, IOC=RawProto)->
+  constructor:(@socketId)->
     super()
     @connected = false
     @paused = true
     @closed = false
-    @io = new IOC()
 
   ##
   # Enables or disables the application from receiving messages from its peer.
@@ -79,7 +77,7 @@ class TcpSocket extends EventProvider
   # @done [function(info)] - Done callback
   send: (data, done)=>
     if @connected
-      data = @io.convert data
+      data = if data instanceof ArrayBuffer then data else str2ab(data.toString())
       chrome.sockets.tcp.send @socketId, data, (info)=>
         if not info
           @emit 'error', -3, chrome.runtime.lastError, 'send1'
@@ -105,7 +103,7 @@ class TcpSocket extends EventProvider
         @emit 'error', code, chrome.runtime.lastError, 'connect'
       else
         @pause @connected, ()=>
-          @emit 'connect', this if @connected
+          @emit( 'connect', this) if @connected
           done(this) if done
 
   ##
@@ -116,7 +114,6 @@ class TcpSocket extends EventProvider
     if @connected
       chrome.sockets.tcp.disconnect @socketId, ()=>
         @connected = false
-        @io.finish this
         @emit 'disconnect'
     else
       console.log 'error', -1, 'ERR:: Socket is not connected', 'disconnect'
@@ -139,18 +136,19 @@ class TcpSocket extends EventProvider
     else if done and not @connected
       @emit 'error', -1, 'ERR:: Socket is not connected', 'info'
 
-  _data:(data)=> @io.append data, this
+  _data:(data)=> @emit 'data', data
 
   _error:(code)=>
     if code != -15 # Disconnect
       # setTimeout(f, 0) - pushes execution to end of JS event queue.
       # Required for processing all events before close socket
-      setTimeout (@emit 'error', code,  new Error(chrome.runtime.lastError or code), '_error'), 0
+      setTimeout ()=>
+        (@emit 'error', code,  new Error(chrome.runtime.lastError or code), '_error')
+      ,0
     @close()
 
   ##
   # Create new TcpSocket
-  # @param ioc [class] -  protocol converter. RawProto, TextProto, JsonProto
   # @done [function(info)] - Done callback
-  @create:(ioc=RawProto, done)=>
-    chrome.sockets.tcp.create (fd)=> done new TcpSocket fd.socketId, ioc
+  @create:(done)=>
+    chrome.sockets.tcp.create (fd)=> done new TcpSocket fd.socketId

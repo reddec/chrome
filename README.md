@@ -1,22 +1,22 @@
-Wrapper of ChromePackaged API in OOP patterns in CoffeeScript
+Wrapper of Chrome Packaged API in OOP patterns in CoffeeScript
 -------
 
-* Author: RedDec <net.dev@mail.ru>
-* 25 Sep 2014
+* Author: RedDec
+* Created: 25 Sep 2014
 
 
-TcpSocket
-======
+# TcpSocket
+
 
 ## Example
 
 ```coffeescript
-TcpSocket.create JsonProto, (sock)->
-  sock.on 'message', (data)->
-    console.log 'Message', data
+TcpSocket.create (sock)->
+  sock.on 'data', (data)->
+    console.log 'Chunk', ab2str8(data)
   sock.on 'connect', ()->
     console.log 'Connected'
-    sock.send ['Hello world!', 1, 2, {a: 1}]
+    sock.send 'Hello world!'
   sock.on 'close', ()->
     console.log 'Closed'
   sock.on 'error', (code, err, from)->
@@ -24,16 +24,34 @@ TcpSocket.create JsonProto, (sock)->
   sock.connect '127.0.0.1', 3000
 ```
 
+## Events
+
+
+* `connect` [TcpSocket] - socket established connection to remote host
+* `disconnect` [TcpSocket] - socket disconnected from remote host
+* `close` [TcpSocket] - socket closed
+* `data` [ArrayBuffer] - data read from socket
+* `error` [code, error, sendet] - raised error
+
+## API
+
 [Original API](https://developer.chrome.com/apps/sockets_tcp)
 
-## [constructor]
+### [static] create
 
-```TcpSocket(@socketId, IOC=RawProto)```
+``` create(done) ```
+
+Create new TcpSocket
+
+* `done` [function(TcpSocket)] - Done callback
+
+### [constructor]
+
+```TcpSocket(@socketId)```
 
 Create new instance of TcpSocket
 
 * `socketId` [Integer] - Socket file descriptor
-* `mode` [class] - IO converter. See: RawProto, TextProto, JsonProto
 
 Public variables:
 
@@ -41,7 +59,7 @@ Public variables:
 * `closed` [boolean] - has been socket closed
 * `connected` [boolean] - is socket connected to peer
 
-## pause
+### pause
 
 ```pause(state, done)```
 
@@ -52,7 +70,7 @@ Automatically sets to true when connection established.
 * `done` [function(TcpSocket)] - Done callback
 
 
-## close
+### close
 
 ``` close(done) ```
 
@@ -60,7 +78,7 @@ Close TcpSocket. Emits 'disconnect' and 'close' events. Do nothing if not connec
 
 * `done` [function(TcpSocket)] - Done callback
 
-## send
+### send
 
 ``` send(data, done) ```
 
@@ -69,7 +87,7 @@ Send data to peer. Emits 'error' if socket is not connected.
 * `data` [ArrayBuffer | Object] - Message. Type of messages and end view depends of `IOC`
 * `done` [function(info)] - Done callback
 
-## connect
+### connect
 
 ``` connect(host, port, done) ```
 
@@ -80,7 +98,7 @@ Connect to remote address. Emits 'error' if connection failed. Emits 'connect' i
 * `done` [function(info)]- Done callback if connected
 
 
-## disconnect
+### disconnect
 
 ``` disconnect(done) ```
 
@@ -89,7 +107,7 @@ Emits 'disconnect' if connection shutdowned.
 
 * `done` [function(TcpSocket)]- Done callback
 
-## info
+### info
 
 ``` info(done) ```
 
@@ -105,12 +123,3 @@ Info (https://developer.chrome.com/apps/sockets_tcp#type-SocketInfo):
 * peerAddress [string]
 * peerPort [integer]
 * ...
-
-## [static] create
-
-``` create(ioc=RawProto, done) ```
-
-Create new TcpSocket
-
-* `ioc` [class] -  protocol converter. RawProto, TextProto, JsonProto
-* `done` [function(TcpSocket)] - Done callback

@@ -10,7 +10,7 @@
 
 
 (function() {
-  var EventEmitter, EventProvider, JsonProto, RawProto, TcpSocket, TextProto, ab2str, ab2str8, str2ab, tcp_reader,
+  var EventEmitter, EventProvider, TcpSocket, ab2str, ab2str8, str2ab, tcp_reader,
     __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
     __slice = [].slice,
     __hasProp = {}.hasOwnProperty,
@@ -151,120 +151,6 @@
   })();
 
   /*
-  # Protocol Utils for of ChromePackaged API - TCPSocket (client)
-  #
-  # Author: RedDec <net.dev@mail.ru>
-  # 25 Sep 2014
-  */
-
-
-  RawProto = (function() {
-
-    function RawProto() {
-      this.convert = __bind(this.convert, this);
-
-      this.append = __bind(this.append, this);
-
-    }
-
-    RawProto.prototype.append = function(chunk, emitter) {
-      return emitter.emit('message', chunk);
-    };
-
-    RawProto.prototype.convert = function(object) {
-      if (object instanceof ArrayBuffer) {
-        return object;
-      } else {
-        return str2ab(object.toString());
-      }
-    };
-
-    RawProto.prototype.finish = function(emitter) {};
-
-    return RawProto;
-
-  })();
-
-  TextProto = (function(_super) {
-
-    __extends(TextProto, _super);
-
-    function TextProto() {
-      this.append = __bind(this.append, this);
-      return TextProto.__super__.constructor.apply(this, arguments);
-    }
-
-    TextProto.prototype.append = function(chunk, emitter) {
-      return emitter.emit('message', ab2str8(chunk));
-    };
-
-    return TextProto;
-
-  })(RawProto);
-
-  JsonProto = (function() {
-
-    JsonProto.delimiter = '\x01';
-
-    function JsonProto() {
-      this.finish = __bind(this.finish, this);
-
-      this.convert = __bind(this.convert, this);
-
-      this.append = __bind(this.append, this);
-      this.buf = '';
-    }
-
-    JsonProto.prototype.append = function(data, emitter) {
-      var char, chunk, idx, last, msg, obj, _i, _len;
-      chunk = ab2str8(data);
-      last = 0;
-      for (idx = _i = 0, _len = chunk.length; _i < _len; idx = ++_i) {
-        char = chunk[idx];
-        if (char === JsonProto.delimiter) {
-          msg = this.buf + chunk.slice(last, idx);
-          last = idx + 1;
-          this.buf = '';
-          obj = void 0;
-          try {
-            obj = JSON.parse(msg);
-          } catch (e) {
-            emitter.emit('error', -2, e, 'JsonProto.append');
-          }
-          if (obj) {
-            emitter.emit('message', obj);
-          }
-        }
-      }
-      return this.buf += chunk.slice(last);
-    };
-
-    JsonProto.prototype.convert = function(data) {
-      if (data instanceof ArrayBuffer) {
-        return data;
-      } else {
-        return str2ab(JSON.stringify(data));
-      }
-    };
-
-    JsonProto.prototype.finish = function(emitter) {
-      var obj;
-      obj = void 0;
-      try {
-        obj = JSON.parse(this.buf);
-      } catch (e) {
-        emitter.emit('error', -2, e, 'JsonProto.finish');
-      }
-      if (obj) {
-        return emitter.emit('message', obj);
-      }
-    };
-
-    return JsonProto;
-
-  })();
-
-  /*
   # Wrapper of ChromePackaged API - TCPSocket (client)
   #
   # TODO: Human readable error codes
@@ -300,11 +186,8 @@
 
     TcpSocket.api = tcp_reader();
 
-    function TcpSocket(socketId, IOC) {
+    function TcpSocket(socketId) {
       this.socketId = socketId;
-      if (IOC == null) {
-        IOC = RawProto;
-      }
       this._error = __bind(this._error, this);
 
       this._data = __bind(this._data, this);
@@ -321,7 +204,6 @@
       this.connected = false;
       this.paused = true;
       this.closed = false;
-      this.io = new IOC();
     }
 
     TcpSocket.prototype.pause = function(state, done) {
@@ -357,7 +239,7 @@
     TcpSocket.prototype.send = function(data, done) {
       var _this = this;
       if (this.connected) {
-        data = this.io.convert(data);
+        data = data instanceof ArrayBuffer ? data : str2ab(data.toString());
         return chrome.sockets.tcp.send(this.socketId, data, function(info) {
           if (!info) {
             return _this.emit('error', -3, chrome.runtime.lastError, 'send1');
@@ -401,7 +283,6 @@
       if (this.connected) {
         chrome.sockets.tcp.disconnect(this.socketId, function() {
           _this.connected = false;
-          _this.io.finish(_this);
           return _this.emit('disconnect');
         });
       } else {
@@ -424,22 +305,22 @@
     };
 
     TcpSocket.prototype._data = function(data) {
-      return this.io.append(data, this);
+      return this.emit('data', data);
     };
 
     TcpSocket.prototype._error = function(code) {
+      var _this = this;
       if (code !== -15) {
-        setTimeout(this.emit('error', code, new Error(chrome.runtime.lastError || code), '_error'), 0);
+        setTimeout(function() {
+          return _this.emit('error', code, new Error(chrome.runtime.lastError || code), '_error');
+        }, 0);
       }
       return this.close();
     };
 
-    TcpSocket.create = function(ioc, done) {
-      if (ioc == null) {
-        ioc = RawProto;
-      }
+    TcpSocket.create = function(done) {
       return chrome.sockets.tcp.create(function(fd) {
-        return done(new TcpSocket(fd.socketId, ioc));
+        return done(new TcpSocket(fd.socketId));
       });
     };
 
