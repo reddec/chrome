@@ -150,3 +150,5 @@ class TcpSocket extends EventProvider
   # @done [function(info)] - Done callback
   @create:(done)=>
     chrome.sockets.tcp.create (fd)=> done new TcpSocket fd.socketId
+
+window.rdd.TcpSocket = TcpSocket # Export

@@ -116,3 +116,5 @@ class TcpServer extends EventProvider
     s = new TcpSocket(client)
     s.connected = true
     @emit 'accept', s
+
+window.rdd.TcpServer = TcpServer # Export

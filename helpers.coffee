@@ -7,6 +7,10 @@
 ###
 "use strict"
 
+# Declare namespace
+if not ('rdd' of window)
+  window.rdd = {}
+
 ab2str=(buf)-> String.fromCharCode.apply null, new Uint16Array(buf)
 
 ab2str8=(buf)-> String.fromCharCode.apply null, new Uint8Array(buf)

@@ -4,9 +4,22 @@ Wrapper of Chrome Packaged API in OOP patterns in CoffeeScript
 * Author: RedDec
 * Created: 25 Sep 2014
 
+JavaScript object: ` window.rdd `
+
+### Table of contents
+
+* Network
+ * TCP
+   * [Client](#TcpSocket)
+   * [Server](#TcpServer)
+
 
 # TcpSocket
 
+JavaScript: ` window.rdd.TcpSocket `
+
+
+[Original API](https://developer.chrome.com/apps/sockets_tcp)
 
 ## Example
 
@@ -35,7 +48,6 @@ TcpSocket.create (sock)->
 
 ## API
 
-[Original API](https://developer.chrome.com/apps/sockets_tcp)
 
 ### [static] create
 
@@ -123,3 +135,137 @@ Info (https://developer.chrome.com/apps/sockets_tcp#type-SocketInfo):
 * peerAddress [string]
 * peerPort [integer]
 * ...
+
+----
+
+
+# TcpServer
+
+JavaScript: ` window.rdd.TcpServer `
+
+[Original API](https://developer.chrome.com/apps/sockets_tcpServer)
+
+
+## Example
+
+CoffeeScript:
+
+```coffeescript
+# Echo server
+TcpServer.create (server)=>
+
+  server.on 'accept', (sock)=>
+    console.log 'Accept'
+
+    sock.on 'data', (data)=>
+      sock.send data
+    sock.on 'close', ()=>
+      console.log('Client closed')
+    sock.pause false, ()=>
+      console.log 'Reading...'
+
+  server.on 'listen', ()=>
+    console.log 'Listen'
+
+  server.on 'error', (code, err, from)->
+    console.log 'Err', code, err, from
+
+  server.listen '0.0.0.0', 3001
+```
+
+JavaScript:
+
+```javascript
+# This is short version of echo server
+window.rdd.TcpServer.create(function(server){
+  server.on('accept', function(client){
+    client.on('data', function(chunk){
+      client.send(chunk);
+    });
+  });
+  server.listen('0.0.0.0', 3001);
+});
+```
+
+## Events
+
+
+* `listen` [TcpServer] - socket becomes accept clients
+* `accept` [TcpSocket, TcpServer] - new client accepted
+* `close` [TcpServer] - socket closed
+* `disconnect` [TcpServer] - stops listening and closes all child sockets
+* `error` [code, error, sender] - raised error
+
+## API
+
+### [static] create
+
+``` create(done) ```
+
+Creates new instance of socket and wrap it to TcpServer
+
+* `done` [function(info)] - Done callback
+
+### [constructor] TcpServer
+
+``` TcpServer(socketId) ```
+
+Create new instance of TcpServer based on socket descriptor
+
+* `socketId` [integer] - Socket descriptor
+
+### pause
+
+``` pause(paused, done) ```
+
+Set pause state
+
+* `paused` [boolean] - Enable pause or not
+* `done` [function(info)] - Done callback
+
+### listen
+
+``` listen(address, port, backlog, done, unpause) ```
+
+Setup socket in listen mode and start accepting clients.
+Emits 'listen' on success.
+
+* `address` [string] - Bind host name or ip
+* `port` [integer] - Bind port number
+* `backlog` [integer] (default = 1) - Clients queue size
+* `done` [function(TcpServer)] - Done callback
+* `unpause` [boolean](default = true) - Unpause socket
+
+### disconnect
+
+``` disconnect(done) ```
+
+Stop listening and close all child sockets. Emits 'disconnect' event
+
+* `done` [function(TcpServer)] - Done callback
+
+### close
+
+``` close(done) ```
+
+Destroy socket. Emits 'close'.
+
+* `done` [function(TcpServer)] - Done callback
+
+### info
+
+``` info(done) ```
+
+Get socket info.
+See: https://developer.chrome.com/apps/sockets_tcpServer#type-SocketInfo
+
+* `done` [function(TcpServer)] - Done callback
+
+### sockets
+
+``` sockets(done) ```
+
+Retrieves the list of currently opened sockets owned by the application.
+See: https://developer.chrome.com/apps/sockets_tcpServer#type-SocketInfo .
+
+* `done` [function(List<SocketInfo>, TcpServer)] - Done callback
