@@ -176,7 +176,7 @@ TcpServer.create (server)=>
 JavaScript:
 
 ```javascript
-# This is short version of echo server
+// This is short version of echo server
 window.rdd.TcpServer.create(function(server){
   server.on('accept', function(client){
     client.on('data', function(chunk){
@@ -213,7 +213,7 @@ Creates new instance of socket and wrap it to TcpServer
 Retrieves the list of currently opened sockets owned by the application.
 See: https://developer.chrome.com/apps/sockets_tcpServer#type-SocketInfo .
 
-* `done` [function(List<SocketInfo>)] - Done callback
+* `done` [function(`List<SocketInfo>`)] - Done callback
 
 
 ### [constructor] TcpServer
@@ -345,7 +345,7 @@ Creates new instance of socket and wrap it to UdpSocket
 Retrieves the list of currently opened sockets owned by the application.
 See: https://developer.chrome.com/apps/sockets_udp#method-getSockets
 
-* `done` [function(List<SocketInfo>)] - Done callback
+* `done` [function(`List<SocketInfo>`)] - Done callback
 
 ### [constructor] UdpSocket
 
