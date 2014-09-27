@@ -9,9 +9,8 @@ JavaScript object: ` window.rdd `
 ### Table of contents
 
 * Network
- * TCP
-   * [Client](#TcpSocket)
-   * [Server](#TcpServer)
+  * [Tcp client](#tcpsocket)
+  * [Tcp server](#tcpserver)
 
 
 # TcpSocket
