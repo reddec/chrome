@@ -12,11 +12,12 @@
 (function() {
   "use strict";
 
-  var EventEmitter, EventProvider, TcpServer, TcpSocket, ab2str, ab2str8, server_reader, str2ab, tcp_reader,
+  var EventEmitter, EventProvider, TcpServer, TcpSocket, UdpSocket, ab2str, ab2str8, server_reader, str2ab, tcp_reader, udp_reader,
     __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; },
     __slice = [].slice,
     __hasProp = {}.hasOwnProperty,
-    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    _this = this;
 
   if (!('rdd' in window)) {
     window.rdd = {};
@@ -365,8 +366,6 @@
 
       this._error = __bind(this._error, this);
 
-      this.sockets = __bind(this.sockets, this);
-
       this.info = __bind(this.info, this);
 
       this.close = __bind(this.close, this);
@@ -385,6 +384,14 @@
       return chrome.sockets.tcpServer.create(function(createInfo) {
         if (done) {
           return done(new TcpServer(createInfo.socketId));
+        }
+      });
+    };
+
+    TcpServer.sockets = function(done) {
+      return chrome.sockets.tcpServer.getSockets(function(socketsInfo) {
+        if (done) {
+          return done(socketsInfo);
         }
       });
     };
@@ -468,15 +475,6 @@
       }
     };
 
-    TcpServer.prototype.sockets = function(done) {
-      var _this = this;
-      return chrome.sockets.tcpServer.getSockets(function(socketsInfo) {
-        if (done) {
-          return done(socketsInfo, _this);
-        }
-      });
-    };
-
     TcpServer.prototype._error = function(code) {
       return this.emit('error', code, new Error(code), 'acceptError');
     };
@@ -490,8 +488,210 @@
 
     return TcpServer;
 
-  })(EventProvider);
+  }).call(this, EventProvider);
 
   window.rdd.TcpServer = TcpServer;
+
+  udp_reader = function() {
+    var data, error;
+    data = new EventProvider();
+    error = new EventProvider();
+    chrome.sockets.udp.onReceive.addListener(function(info) {
+      return data.emit(info.socketId, info.data, info.remoteAddress, info.remotePort);
+    });
+    chrome.sockets.udp.onReceiveError.addListener(function(info) {
+      if (info) {
+        return error.emit(info.socketId, info.resultCode);
+      }
+    });
+    return {
+      data: data,
+      error: error
+    };
+  };
+
+  UdpSocket = (function(_super) {
+
+    __extends(UdpSocket, _super);
+
+    UdpSocket.api = udp_reader();
+
+    UdpSocket.create = function(done) {
+      var _this = this;
+      return chrome.sockets.udp.create(function(createInfo) {
+        if (done) {
+          return done(new UdpSocket(createInfo.socketId));
+        }
+      });
+    };
+
+    UdpSocket.sockets = function(done) {
+      var _this = this;
+      return chrome.sockets.udp.getSockets(function(socks) {
+        if (done) {
+          return done(socks);
+        }
+      });
+    };
+
+    function UdpSocket(socketId) {
+      this.socketId = socketId;
+      this._error = __bind(this._error, this);
+
+      this._data = __bind(this._data, this);
+
+      UdpSocket.__super__.constructor.call(this);
+      this._dta = UdpSocket.api.data.on(this.socketId, this._data);
+      this._err = UdpSocket.api.error.on(this.socketId, this._error);
+    }
+
+    UdpSocket.prototype.update = function(properties, done) {
+      var _this = this;
+      return chrome.sockets.udp.update(this.socketId, properties, function() {
+        if (done) {
+          return done(_this);
+        }
+      });
+    };
+
+    UdpSocket.prototype.pause = function(state, done) {
+      var _this = this;
+      return chrome.sockets.udp.setPaused(this.socketId, state, function() {
+        if (done) {
+          return done(_this);
+        }
+      });
+    };
+
+    UdpSocket.prototype.bind = function(address, port, done, unpause) {
+      var _this = this;
+      if (unpause == null) {
+        unpause = true;
+      }
+      return chrome.sockets.udp.bind(this.socketId, address, port, function(result) {
+        if (result < 0) {
+          _this.emit('error', result, chrome.runtime.lastError, 'bind');
+          if (done) {
+            return done(_this, false);
+          }
+        } else {
+          _this.emit('bind', address, port);
+          return _this.pause(!unpause, function() {
+            if (done) {
+              return done(_this, true);
+            }
+          });
+        }
+      });
+    };
+
+    UdpSocket.prototype.send = function(data, address, port, done) {
+      var _this = this;
+      data = data instanceof ArrayBuffer ? data : str2ab(data.toString());
+      return chrome.sockets.udp.send(this.socketId, data, address, port, function(info) {
+        if (info.resultCode < 0) {
+          _this.emit('error', info.resultCode, chrome.runtime.lastError, 'send');
+        }
+        if (done) {
+          return done(_this, info.bytesSent);
+        }
+      });
+    };
+
+    UdpSocket.prototype.close = function(done) {
+      var _this = this;
+      return chrome.sockets.udp.close(this.socketId, function() {
+        UdpSocket.api.data.removeListener(_this._dta);
+        UdpSocket.api.data.error(_this._err);
+        _this.emit('close', _this);
+        if (done) {
+          return done(_this);
+        }
+      });
+    };
+
+    UdpSocket.prototype.info = function(done) {
+      var _this = this;
+      return chrome.sockets.udp.getInfo(this.socketId, function(info) {
+        if (done) {
+          return done(info, _this);
+        }
+      });
+    };
+
+    UdpSocket.prototype.join = function(address, done) {
+      var _this = this;
+      return chrome.sockets.udp.joinGroup(this.socketId, address, function(code) {
+        if (code < 0) {
+          _this.emit('error', code, chrome.runtime.lastError, 'join');
+        } else {
+          _this.emit('join', address, _this);
+        }
+        if (done) {
+          return done(_this);
+        }
+      });
+    };
+
+    UdpSocket.prototype.leave = function(address, done) {
+      var _this = this;
+      return chrome.sockets.udp.leaveGroup(this.socketId, address, function(code) {
+        if (code < 0) {
+          _this.emit('error', code, chrome.runtime.lastError, 'leave');
+        } else {
+          _this.emit('leave', address, _this);
+        }
+        if (done) {
+          return done(_this);
+        }
+      });
+    };
+
+    UdpSocket.prototype.multicastTTL = function(ttl, done) {
+      var _this = this;
+      return chrome.sockets.udp.setMulticastTimeToLive(this.socketId, ttl, function(code) {
+        if (code < 0) {
+          _this.emit('error', code, chrome.runtime.lastError, 'ttl');
+        }
+        if (done) {
+          return done(_this);
+        }
+      });
+    };
+
+    UdpSocket.prototype.multicastLoopback = function(enable, done) {
+      var _this = this;
+      return setMulticastLoopbackMode(this.socketId, enable, function(code) {
+        if (code < 0) {
+          _this.emit('error', code, chrome.runtime.lastError, 'ttl');
+        }
+        if (done) {
+          return done(_this);
+        }
+      });
+    };
+
+    UdpSocket.prototype.joinedGroups = function(done) {
+      var _this = this;
+      return chrome.sockets.udp.getJoinedGroups(this.socketId, function(groups) {
+        if (done) {
+          return done(groups);
+        }
+      });
+    };
+
+    UdpSocket.prototype._data = function(chunk, addr, port) {
+      return this.emit('data', chunk, addr, port);
+    };
+
+    UdpSocket.prototype._error = function(code) {
+      return this.emit('error', code, new Error(code), 'acceptError');
+    };
+
+    return UdpSocket;
+
+  })(EventProvider);
+
+  window.rdd.UdpSocket = UdpSocket;
 
 }).call(this);

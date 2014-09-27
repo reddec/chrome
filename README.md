@@ -9,8 +9,9 @@ JavaScript object: ` window.rdd `
 ### Table of contents
 
 * Network
-  * [Tcp client](#tcpsocket)
-  * [Tcp server](#tcpserver)
+  * [TCP client](#tcpsocket)
+  * [TCP server](#tcpserver)
+  * [UDP socket](#udpsocket)
 
 
 # TcpSocket
@@ -205,6 +206,16 @@ Creates new instance of socket and wrap it to TcpServer
 
 * `done` [function(info)] - Done callback
 
+### [static] sockets
+
+``` sockets(done) ```
+
+Retrieves the list of currently opened sockets owned by the application.
+See: https://developer.chrome.com/apps/sockets_tcpServer#type-SocketInfo .
+
+* `done` [function(List<SocketInfo>)] - Done callback
+
+
 ### [constructor] TcpServer
 
 ``` TcpServer(socketId) ```
@@ -260,11 +271,192 @@ See: https://developer.chrome.com/apps/sockets_tcpServer#type-SocketInfo
 
 * `done` [function(TcpServer)] - Done callback
 
-### sockets
+----
+
+
+# UdpSocket
+
+JavaScript: ` window.rdd.UdpSocket `
+
+[Original API](https://developer.chrome.com/apps/sockets_udp)
+
+
+## Example
+
+CoffeeScript:
+
+```coffeescript
+UdpSocket.create (sock)=>
+    sock.on 'error', (code, err, from)->
+      console.log 'Error', code, from, err
+    sock.on 'data', (chunk, addr, port)->
+      console.log 'Data', ab2str8(chunk), 'from', addr, port
+
+    sock.bind '0.0.0.0', 0, ()=>
+      console.log 'Bound'
+      sock.info (info)=>
+        console.log 'Info', info
+        sock.send 'Hello world!', '127.0.0.1', info.localPort
+```
+
+JavaScript:
+
+```javascript
+window.rdd.UdpSocket.create(function(sock) {
+  sock.on('error', function(code, err, from) {
+    console.log('Error', code, from, err);
+  });
+  sock.on('data', function(chunk, addr, port) {
+    console.log('Data', ab2str8(chunk), 'from', addr, port);
+  });
+  sock.bind('0.0.0.0', 0, function() {
+    console.log('Bound');
+    sock.info(function(info) {
+      console.log('Info', info);
+      sock.send('Hello world!', '127.0.0.1', info.localPort);
+    });
+  });
+});
+```
+
+## Events
+
+
+* `bind` [address, port] - socket bound to address:port
+* `close` [UdpSocket] - socket closed
+* `join` [address, UdpSocket] - socket joined to multicast group
+* `leave` [address, UdpSocket] - socket leaved multicast group
+* `error` [code, error, sender] - raised error
+
+## API
+
+### [static] create
+
+``` create(done) ```
+
+Creates new instance of socket and wrap it to UdpSocket
+
+* `done` [function(UdpSocket)] - Done callback
+
+### [static] sockets
 
 ``` sockets(done) ```
 
 Retrieves the list of currently opened sockets owned by the application.
-See: https://developer.chrome.com/apps/sockets_tcpServer#type-SocketInfo .
+See: https://developer.chrome.com/apps/sockets_udp#method-getSockets
 
-* `done` [function(List<SocketInfo>, TcpServer)] - Done callback
+* `done` [function(List<SocketInfo>)] - Done callback
+
+### [constructor] UdpSocket
+
+``` UdpSocket(socketId) ```
+
+Create new instance of UdpSocket
+
+* `socketId` [integer] - Socket descriptor
+
+### update
+
+``` update(properties, done) ```
+
+Updates the socket properties.
+See: https://developer.chrome.com/apps/sockets_udp#method-update
+
+* `properties` [SocketProperties] - The properties to update.
+* `done` [function(UdpSocket)] - Done callback
+
+### pause
+
+``` pause(state, done) ```
+
+Pauses or unpauses a socket. A paused socket is not recieving data
+
+* `state` [boolean] - Pause or not
+* `done` [function(UdpSocket)] - Done callback
+
+### bind
+
+``` bind(address, port, done, unpause) ```
+
+Binds the local address and port for the socket.
+For a client socket, it is recommended to use port 0 to let
+the platform pick a free port.
+
+* `address` [string] - IP or address of machine
+* `port` [integer] - port number
+* `done` [function(UdpSocket)] - Done callback
+* `unpause` [boolean] (default = true) - Automatic unpause socket
+
+### send
+
+``` send(data, address, port, done) ```
+
+Sends data on the given socket to the given address and port.
+The socket must be bound to a local port before calling this method.
+
+* `data` [ArrayBuffer | String] - Message to send
+* `address` [string] - IP or address of target machine
+* `port` [integer] - port number
+* `done` [function(UdpSocket)] - Done callback
+
+### close
+
+``` close(done) ```
+
+Closes the socket and releases the address/port the socket is bound to.
+
+* `done` [function(UdpSocket)] - Done callback
+
+### info
+
+``` info(done) ```
+
+Retrieves the state of the given socket
+
+* `done` [function(SocketInfo, UdpSocket)] - Done callback
+
+### join
+
+``` join(address, done) ```
+
+Joins the multicast group and starts to receive packets from that group.
+The socket must be bound to a local port before calling this method.
+
+* `address` [string] - multicast address
+* `done` [function(UdpSocket)] - Done callback
+
+### leave
+
+``` leave(address, done) ```
+
+Leaves the multicast group previously joined
+
+* `address` [string] - multicast address
+* `done` [function(UdpSocket)] - Done callback
+
+### multicastTTL
+
+``` multicastTTL(ttl, done) ```
+
+Sets the time-to-live of multicast packets sent to the multicast group.
+
+* `ttl` [integer] - The time-to-live value
+* `done` [function(UdpSocket)] - Done callback
+
+### multicastLoopback
+
+``` multicastLoopback(enable, done) ```
+
+Sets whether multicast packets sent from the host to the multicast group
+will be looped back to the host.
+
+* `enable` [boolean] - Indicate whether to enable loopback mode.
+* `done` [function(UdpSocket)] - Done callback
+
+### joinedGroups
+
+``` joinedGroups(done) ```
+
+Gets the multicast group addresses the socket is currently joined to.
+
+* done [function(UdpSocket)] - Done callback

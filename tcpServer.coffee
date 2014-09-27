@@ -37,6 +37,14 @@ class TcpServer extends EventProvider
       done(new TcpServer(createInfo.socketId)) if done
 
   ##
+  # Retrieves the list of currently opened sockets owned by the application.
+  # See: https://developer.chrome.com/apps/sockets_tcpServer#type-SocketInfo
+  # @param done [function(List<SocketInfo>)] - Done callback
+  #
+  @sockets:(done)=>
+    chrome.sockets.tcpServer.getSockets (socketsInfo)=>
+      done(socketsInfo) if done
+  ##
   # Set pause state
   # @param paused [boolean] - Enable pause or not
   # @param done [function(TcpServer)] - Done callback
@@ -100,14 +108,7 @@ class TcpServer extends EventProvider
       chrome.sockets.tcpServer.getInfo @socketId, (info)=>
         done(info, this)
 
-  ##
-  # Retrieves the list of currently opened sockets owned by the application.
-  # See: https://developer.chrome.com/apps/sockets_tcpServer#type-SocketInfo
-  # @param done [function(List<SocketInfo>, TcpServer)] - Done callback
-  #
-  sockets:(done)=>
-    chrome.sockets.tcpServer.getSockets (socketsInfo)=>
-      done(socketsInfo, this) if done
+
 
   _error:(code)=>
     @emit 'error', code, new Error(code), 'acceptError'
